@@ -16,7 +16,7 @@ CORS(app)
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 """
-# db_drop_and_create_all()
+db_drop_and_create_all()
 
 ## ROUTES
 """
@@ -160,8 +160,19 @@ def patch_drink(f, id):
 def delete_drink(f, id):
     drink = Drink.query.filter(Drink.id == id).one_or_none() if id else abort(404)
     try:
-        drink.delete()
-        return json.dumps({"success": True, "delete": id}), 200
+        if drink:
+            drink.delete()
+            return json.dumps({"success": True, "drink": id}), 200
+        else:
+            return (
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": "Drink not found.",
+                    }
+                ),
+                404,
+            )
     except:
         db.session.rollback()
         return json.dumps({"success": False, "error": "An error occurred"}), 500
@@ -197,7 +208,25 @@ def unprocessable(error):
 """
 
 
+@app.errorhandler(404)
+def unprocessable(error):
+    """
+    Propagates the formatted 404 error to the response
+    """
+    return (
+        jsonify({"success": False, "error": 404, "message": "resource not found"}),
+        404,
+    )
+
+
 """
 @TODO implement error handler for AuthError
     error handler should conform to general task above 
 """
+
+
+@app.errorhandler(AuthError)
+def handle_auth_error(e):
+    response = jsonify(e.error)
+    response.status_code = e.status_code
+    return response
